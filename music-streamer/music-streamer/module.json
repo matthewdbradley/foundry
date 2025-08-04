@@ -12,7 +12,7 @@
 	],
 	"version": "1.0.0",
 	"minimumCoreVersion": "9",
-	"compatibleCoreVersion": "9",
+	"compatibleCoreVersion": "13",
 	"socket": true,
 	"scripts": [
 		"scripts/music-streamer.js"
@@ -20,9 +20,10 @@
 	"styles": [
 		"css/music-streamer.css"	
 	],
-	"url": "https://github.com/Tmktahu/foundry/tree/master/music-streamer",
-	"readme": "https://github.com/Tmktahu/foundry/blob/master/music-streamer/README.md",
-	"manifest": "https://raw.githubusercontent.com/Tmktahu/foundry/master/music-streamer/music-streamer/module.json",
-	"download": "https://github.com/Tmktahu/foundry/raw/master/music-streamer/music-streamer/music-streamer.zip"
+	"url": "https://github.com/matthewdbradley/foundry/tree/master/music-streamer",
+	"readme": "https://github.com/matthewdbradley/foundry/blob/master/music-streamer/README.md",
+	"manifest": "https://raw.githubusercontent.com/matthewdbradley/foundry/master/music-streamer/music-streamer/module.json",
+	"download": "https://github.com/matthewdbradley/foundry/raw/master/music-streamer/music-streamer/music-streamer.zip"
 }
+
 

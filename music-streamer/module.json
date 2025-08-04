@@ -11,17 +11,17 @@
 		}
 	],
 	"version": "1.0.0",
-	"minimumCoreVersion": "9",
-	"compatibleCoreVersion": "13",
 	"socket": true,
-	"scripts": [
-		"scripts/music-streamer.js"
-	],
+	"compatibility": {
+        	"minimum": "13",
+  		"verified": "13",
+	},
+	"esmodules": ["scripts/music-streamer.js"],
 	"styles": [
 		"css/music-streamer.css"	
 	],
 	"url": "https://github.com/matthewdbradley/foundry/tree/master/music-streamer/music-streamer",
-	"manifest": "https://raw.githubusercontent.com/matthewdbradley/foundry/master/music-streamer/music-streamer/module.json",
+	"manifest": "https://raw.githubusercontent.com/matthewdbradley/foundry/master/music-streamer/module.json",
 	"download": "https://github.com/matthewdbradley/foundry/raw/master/music-streamer/music-streamer/music-streamer.zip"
 }
 

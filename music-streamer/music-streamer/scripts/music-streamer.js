@@ -1,179 +1,105 @@
-// Music Streamer
-// @author Fryke#0746
-// @version 1.0.0
+// Music Streamer v13 compatible
+// Original author: Fryke#0746
+// Updated by: matthewdbradley
 
-class MusicStreamer extends Application{
+class MusicStreamer extends Application {
   static ID = 'music-streamer';
 
-  constructor(options) {
+  constructor(options = {}) {
     super(options);
 
-    this.streamURL = game.user.getFlag("music-streamer", "streamURL") || null;
-    this.audio = new Audio(this.streamURL);
+    this.streamURL = null;
+    this.audio = new Audio();
     this.audio.autoplay = true;
   }
 
-  /* -------------------------------------------- */
-
   /** @override */
-	static get defaultOptions() {
+  static get defaultOptions() {
     return mergeObject(super.defaultOptions, {
-        id: "music-streamer-window",
-        template: "./modules/music-streamer/templates/music-streamer.html",
-        popOut: false
+      id: "music-streamer-window",
+      template: "modules/music-streamer/templates/music-streamer.html",
+      popOut: false,
     });
   }
 
-  activateListeners(html) {
+  async activateListeners(html) {
     super.activateListeners(html);
 
-    game.socket.on('module.music-streamer', (message) => {
-      this.streamURL = message;
-      game.user.setFlag("music-streamer", "streamURL", this.streamURL);
-      document.getElementById('musicstreamer-url-input').value = this.streamURL;
-      document.getElementById('musicstreamer-settings').classList.remove('open');
-      this.play();
-    })
+    // Handle socket messages
+    if (!this._socketRegistered) {
+      game.socket.on(`module.music-streamer`, async (message) => {
+        this.streamURL = message;
+        await game.users.current.setFlag("music-streamer", "streamURL", this.streamURL);
+        document.getElementById('musicstreamer-url-input').value = this.streamURL;
+        document.getElementById('musicstreamer-settings').classList.remove('open');
+        this.play();
+      });
+      this._socketRegistered = true;
+    }
 
-    document.getElementById('musicstreamer-url-input').value = this.streamURL;
+    // Set volume slider
+    const volumeSlider = html[0].querySelector("#musicstreamer-volume-control");
+    volumeSlider.addEventListener("change", (e) => {
+      this.audio.volume = e.currentTarget.value / 100;
+    });
 
-    let volumeSlider = document.querySelector("#musicstreamer-volume-control");
-      volumeSlider.addEventListener("change", function(e) {
-      window.MusicStreamer.audio.volume = e.currentTarget.value / 100;
-    })
+    // Load current stream URL into input
+    document.getElementById('musicstreamer-url-input').value = this.streamURL ?? '';
 
-    html.find('#musicstreamer-move-handle').mousedown(ev => {
-        ev.preventDefault();
-        ev = ev || window.event;
-        let isRightMB = false;
-        if ("which" in ev) { // Gecko (Firefox), WebKit (Safari/Chrome) & Opera
-            isRightMB = ev.which == 3;
-        } else if ("button" in ev) { // IE, Opera 
-            isRightMB = ev.button == 2;
-        }
-
-        if (!isRightMB) {
-            let deltaX = 0, deltaY = 0, startX = 0, startY = 0;
-            dragElement(document.getElementById("music-streamer"));
-
-            function dragElement(element) {
-              element.onmousedown = dragMouseDown;
-                function dragMouseDown(e) {
-                    e = e || window.event;
-                    e.preventDefault();
-                    startX = e.clientX;
-                    startY = e.clientY;
-
-                    if (element.style.bottom != undefined) {
-                      element.style.top = element.offsetTop + "px";
-                      element.style.bottom = null;
-                    }
-
-                    document.onmouseup = closeDragElement;
-                    document.onmousemove = elementDrag;
-                }
-
-                function elementDrag(e) {
-                    e = e || window.event;
-                    e.preventDefault();
-                    // calculate the new cursor position:
-                    deltaX = startX - e.clientX;
-                    deltaY = startY - e.clientY;
-                    startX = e.clientX;
-                    startY = e.clientY;
-                    // set the element's new position:
-                    element.style.bottom = null;
-                    element.style.right = null
-                    element.style.top = (element.offsetTop - deltaY) + "px";
-                    element.style.left = (element.offsetLeft - deltaX) + "px";
-                    element.style.position = 'fixed';
-                    element.style.zIndex = 100;
-                }
-
-                function closeDragElement() {
-                    // stop moving when mouse button is released:
-                    element.onmousedown = null;
-                    element.style.zIndex = null;
-                    document.onmouseup = null;
-                    document.onmousemove = null;
-
-                    let xPos = Math.clamped((element.offsetLeft - deltaX), 0, window.innerWidth - 200);
-                    let yPos = Math.clamped((element.offsetTop - deltaY), 0, window.innerHeight - 20);
-
-                    let position = { top: null, bottom: null, left: null, right: null };
-                    position.top = yPos + 1;
-                    position.left = xPos + 1;
-
-                    element.style.top = (position.top ? position.top + "px" : null);
-                    element.style.left = (position.left ? position.left + "px" : null);
-
-                    //log(`Setting music-streamer position:`, position);
-                    game.user.setFlag('music-streamer', 'position', position);
-                    this.pos = position;
-                }
-            }
-        }
+    // Handle drag behavior
+    html.find('#musicstreamer-move-handle').mousedown((ev) => {
+      this._handleDrag(ev);
     });
   }
 
-  /** @override */
-  getData(options) {
-    let pos = this.getPos();
-    return {
-        pos: pos,
-    };
+  async getData() {
+    let pos = await this.getPos();
+    return { pos };
   }
 
-  getPos() {
-    this.pos = game.user.getFlag("music-streamer", "position");
+  async getPos() {
+    if (!this.pos) {
+      this.pos = await game.users.current.getFlag("music-streamer", "position");
 
-    if (this.pos == undefined) {
-        let hbpos = $('#hotbar').position();
-        let width = $('#hotbar').width();
+      if (!this.pos) {
+        const hbpos = $('#hotbar').position();
+        const width = $('#hotbar').width();
         this.pos = { left: hbpos.left + width + 4, right: '', top: 10, bottom: '' };
-        game.user?.setFlag("music-streamer", "position", this.pos);
+        await game.users.current.setFlag("music-streamer", "position", this.pos);
+      }
     }
 
-    let result = '';
-    if (this.pos != undefined) {
-        result = Object.entries(this.pos).filter(k => {
-            return k[1] != null;
-        }).map(k => {
-            return k[0] + ":" + k[1] + 'px';
-        }).join('; ');
-    }
-
-    return result;
+    return Object.entries(this.pos)
+      .filter(([_, val]) => val != null)
+      .map(([key, val]) => `${key}:${val}px`)
+      .join('; ');
   }
 
-  setPos() {
-      this.pos = game.user.getFlag("music-streamer", "position");
+  async setPos() {
+    if (!this.pos) {
+      const hbpos = $('#hotbar').position();
+      const width = $('#hotbar').width();
+      this.pos = { left: hbpos.left + width + 4, right: '', top: 10, bottom: '' };
+      await game.users.current.setFlag("music-streamer", "position", this.pos);
+    }
 
-      if (this.pos == undefined) {
-          let hbpos = $('#hotbar').position();
-          let width = $('#hotbar').width();
-          this.pos = { left: hbpos.left + width + 4, right: '', top: '', bottom: 10 };
-          game.user.setFlag("music-streamer", "position", this.pos);
-      }
-
-      log('Setting position', this.pos, this.element);
-      $(this.element).css(this.pos);
-
-      return this;
+    $(this.element).css(this.pos);
+    return this;
   }
 
   toggleSettings() {
     document.getElementById('musicstreamer-settings').classList.toggle('open');
   }
 
-  setSrc() {
-    let newURL = document.getElementById('musicstreamer-url-input').value;
-    if(game.user.isGM) {
+  async setSrc() {
+    const newURL = document.getElementById('musicstreamer-url-input').value;
+
+    if (game.user.isGM) {
       game.socket.emit('module.music-streamer', newURL);
     }
 
     this.streamURL = newURL;
-    game.user.setFlag("music-streamer", "streamURL", this.streamURL);
+    await game.users.current.setFlag("music-streamer", "streamURL", this.streamURL);
     document.getElementById('musicstreamer-settings').classList.remove('open');
     this.play();
   }
@@ -185,16 +111,66 @@ class MusicStreamer extends Application{
   }
 
   play() {
-    if(this.streamURL) {
+    if (this.streamURL) {
       this.audio.src = this.streamURL;
     }
     this.audio.load();
-    this.audio.play();
+    this.audio.play().catch(console.warn);
+  }
+
+  async initialize() {
+    this.streamURL = await game.users.current.getFlag("music-streamer", "streamURL") || '';
+    this.audio.src = this.streamURL;
+    await this.render(true);
+  }
+
+  _handleDrag(ev) {
+    ev.preventDefault();
+    if (ev.which === 3) return; // right-click
+
+    const element = document.getElementById("music-streamer");
+    let startX = ev.clientX;
+    let startY = ev.clientY;
+
+    const dragMouseDown = (e) => {
+      e.preventDefault();
+      startX = e.clientX;
+      startY = e.clientY;
+      document.onmouseup = closeDragElement;
+      document.onmousemove = elementDrag;
+    };
+
+    const elementDrag = (e) => {
+      e.preventDefault();
+      let deltaX = startX - e.clientX;
+      let deltaY = startY - e.clientY;
+      startX = e.clientX;
+      startY = e.clientY;
+
+      element.style.top = (element.offsetTop - deltaY) + "px";
+      element.style.left = (element.offsetLeft - deltaX) + "px";
+      element.style.position = 'fixed';
+      element.style.zIndex = 100;
+    };
+
+    const closeDragElement = async () => {
+      document.onmouseup = null;
+      document.onmousemove = null;
+      element.style.zIndex = null;
+
+      let xPos = Math.clamped(element.offsetLeft, 0, window.innerWidth - 200);
+      let yPos = Math.clamped(element.offsetTop, 0, window.innerHeight - 20);
+
+      this.pos = { top: yPos, left: xPos };
+      await game.users.current.setFlag('music-streamer', 'position', this.pos);
+    };
+
+    dragMouseDown(ev);
   }
 }
 
-Hooks.on("ready", () => {
-  let musicStreamer = new MusicStreamer();
+Hooks.once("ready", async () => {
+  const musicStreamer = new MusicStreamer();
   window.MusicStreamer = musicStreamer;
-  musicStreamer.render(true);
+  await musicStreamer.initialize();
 });

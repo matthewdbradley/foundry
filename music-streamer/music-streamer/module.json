@@ -1,5 +1,5 @@
 {
-	"name": "music-streamer",
+	"id": "music-streamer",
 	"title": "Fryke's Music Streamer",
 	"description": "Adds a small HTML 5 player meant for playing streamed music.",
 	"author": "Fryke#0746",
@@ -25,3 +25,4 @@
 	"manifest": "https://raw.githubusercontent.com/Tmktahu/foundry/master/music-streamer/music-streamer/module.json",
 	"download": "https://github.com/Tmktahu/foundry/raw/master/music-streamer/music-streamer/music-streamer.zip"
 }
+
